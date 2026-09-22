@@ -79,7 +79,7 @@ const PAD = {
 export interface TrendMarker {
   x: number;
   label: string;
-  kind?: "call" | "repair";
+  kind?: "call" | "repair" | string;
 }
 
 export function TrendLineChart({

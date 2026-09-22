@@ -200,7 +200,7 @@ function HistoryList({
   }
   // Only show fault/sensor events — NORMAL runs are filtered at the API layer,
   // but guard here too so live-injected runs are also filtered correctly.
-  const faultRuns = (runs ?? []).filter((run) => run.sourceCheck.verdict !== "nominal");
+  const faultRuns = (runs ?? []).filter((run) => run.sourceCheck?.verdict !== "nominal");
 
   if (faultRuns.length === 0) {
     return <p className="px-2 py-4 text-xs text-muted">No fault events recorded yet for this machine.</p>;
@@ -511,7 +511,7 @@ function Fold({
   );
 }
 
-function isSparePartLabel(value?: string | null): boolean {
+function isSparePartLabel(value?: string | null): value is string {
   if (!value) return false;
   const text = value.trim();
   const low = text.toLowerCase();
@@ -535,7 +535,7 @@ function toRepairTabs(options: RepairOption[], sparePart?: string | null): Repai
   const partsTab = options.find((opt) => opt.category === "Parts & CMMS");
   const part = [sparePart, intermediate?.part, partsTab?.part, partsTab?.partsOrTools].find(isSparePartLabel);
   const tabs: RepairOption[] = [];
-  if (intermediate) tabs.push({ ...intermediate, part });
+  if (intermediate) tabs.push({ ...intermediate, part: part ?? undefined });
   if (permanent) tabs.push(permanent);
   return tabs;
 }

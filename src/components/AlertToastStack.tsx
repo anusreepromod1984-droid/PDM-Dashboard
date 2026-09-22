@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { formatNumber } from "@/lib/format";
 import { IconAlertTriangle, IconX } from "@/components/icons";
 import { useFaultScenario } from "@/hooks/useFaultScenario";
+import type { AlertBreach } from "@/lib/types";
 
 function thresholdLabel(breach: AlertBreach): string {
   const unit = breach.unit ? ` ${breach.unit}` : "";
