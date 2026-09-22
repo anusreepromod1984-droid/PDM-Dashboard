@@ -1,0 +1,34 @@
+name: pdm_dashboard
+
+# UI only. Agents / MQTT / Redis / Postgres stay in PredictiveMaintenanceSystem.
+# Start the API first from that repo, then from this folder: docker compose up -d
+#
+#   cd /data/Agents/cursor_code/PredictiveMaintenanceSystem && docker compose up -d api
+#   cd /data/Agents/cursor_code/PDM_Dashboard && docker compose up -d
+
+services:
+  frontend:
+    container_name: apms_frontend
+    image: node:22-bookworm-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+      - frontend_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=
+      - NEXT_PUBLIC_SOCKET_URL=
+      - NEXT_PUBLIC_SOCKET_PATH=/socket.io
+      # Host-published FastAPI (docker-compose in PredictiveMaintenanceSystem maps 8004:8000)
+      - BACKEND_INTERNAL_URL=http://host.docker.internal:8004
+      - BACKEND_FASTAPI_URL=http://host.docker.internal:8004
+      - PORT=3000
+    restart: unless-stopped
+
+volumes:
+  frontend_node_modules:

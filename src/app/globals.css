@@ -1,0 +1,344 @@
+@import "tailwindcss";
+
+/*
+  Reference palette from the dataviz skill (references/palette.md) — validated
+  categorical/status/sequential sets. Light is the default; dark is selected
+  explicitly via [data-theme="dark"] (set by ThemeProvider) and also mirrors the
+  OS preference for a first, unstyled paint.
+*/
+/*
+  "-rgb" companions hold the same colors as bare R G B channel numbers (no #, no
+  color() function) so call sites can build `rgb(var(--x-rgb) / N%)` instead of
+  `color-mix(in srgb, var(--x) N%, transparent)`. Both render identically, but the
+  space-separated rgb()-with-alpha syntax has been supported since ~2018 (Chrome 65),
+  while color-mix() needs Chrome 111 (2023) — the /3d flow gets embedded in Unreal
+  Engine's CEF-based web widget, which typically ships a Chromium build well behind
+  current Chrome, and color-mix() was the confirmed cause of its broken/blank colors.
+  Kept in sync by hand with the hex values right above each one.
+*/
+:root {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --surface-1-rgb: 26 26 25;
+  --surface-2: #0d0d0d;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --hairline: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.1);
+  --success-text: #0ca30c;
+
+  --series-1: #3987e5;
+  --series-1-rgb: 57 135 229;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+
+  --status-good: #0ca30c;
+  --status-good-rgb: 12 163 12;
+  --status-warning: #fab219;
+  --status-warning-rgb: 250 178 25;
+  --status-critical: #d03b3b;
+  --status-critical-rgb: 208 59 59;
+
+  --accent: var(--series-1);
+  --accent-rgb: var(--series-1-rgb);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --surface-1-rgb: 252 252 251;
+  --surface-2: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --hairline: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --success-text: #006300;
+
+  --series-1: #2a78d6;
+  --series-1-rgb: 42 120 214;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+
+  --status-good: #0ca30c;
+  --status-good-rgb: 12 163 12;
+  --status-warning: #fab219;
+  --status-warning-rgb: 250 178 25;
+  --status-critical: #d03b3b;
+  --status-critical-rgb: 208 59 59;
+
+  --accent: var(--series-1);
+  --accent-rgb: var(--series-1-rgb);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --surface-1-rgb: 26 26 25;
+  --surface-2: #0d0d0d;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --hairline: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.1);
+  --success-text: #0ca30c;
+
+  --series-1: #3987e5;
+  --series-1-rgb: 57 135 229;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-surface: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-hairline: var(--hairline);
+  --color-baseline: var(--baseline);
+  --color-border: var(--border);
+  --color-success: var(--success-text);
+
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+  --color-series-7: var(--series-7);
+  --color-series-8: var(--series-8);
+
+  --color-good: var(--status-good);
+  --color-warning: var(--status-warning);
+  --color-critical: var(--status-critical);
+  --color-accent: var(--accent);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+::selection {
+  background: var(--accent);
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--baseline);
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.pulse-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+/* Stale/offline data stays fully visible (never blanked) but visually muted — a stale
+   critical reading is still the most recent known truth, so desaturate rather than gray
+   out entirely, which would read as "back to normal". */
+[data-stale="true"] {
+  opacity: 0.62;
+  filter: saturate(0.65);
+  transition: opacity 0.2s, filter 0.2s;
+}
+[data-stale="true"] .pulse-dot {
+  animation: none;
+}
+
+/* Fleet-wide "something needs attention" siren — an ambient, undismissable frame
+   around the viewport (independent of AlertToastStack's per-card dismiss state) so a
+   user can tell action is needed at a glance without reading every toast. Thickness
+   breathes between 6px and 14px via the inset box-shadow spread. */
+@keyframes alert-border-glow {
+  0%,
+  100% {
+    box-shadow: inset 0 0 10px 6px rgb(var(--status-critical-rgb) / 45%);
+  }
+  50% {
+    box-shadow: inset 0 0 22px 14px rgb(var(--status-critical-rgb) / 80%);
+  }
+}
+.alert-border-glow {
+  display: none !important;
+}
+
+/* Per-fault-gauge breach indicator (FaultGauge.tsx) — same color-mix/box-shadow idiom
+   as alert-border-glow above but scoped to one card's own edge instead of the whole
+   viewport, so a single fault_code that has actually crossed its configured
+   alert_threshold (backend/src/domain/alertEngine.ts), not just this gauge's own
+   display-only warning/critical color bands, stands out at a glance. */
+@keyframes fault-alert-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgb(var(--status-critical-rgb) / 55%);
+  }
+  50% {
+    box-shadow: 0 0 8px 3px rgb(var(--status-critical-rgb) / 85%);
+  }
+}
+.fault-alert-glow {
+  animation: fault-alert-glow 1.8s ease-in-out infinite;
+}
+
+/* Critical-machine indicator on the floor map (FloorCanvas.tsx MachineTile) — a
+   radiation/sonar-style ring expanding outward from the machine icon and fading as it
+   grows, repeating continuously, so a machine in critical condition reads as "hot" at a
+   glance across the whole plant floor map, not just via its small status dot.
+   border-radius on .machine-radiation-glow makes the expanding box-shadow ring round
+   regardless of the icon's actual (non-circular) shape underneath it. */
+@keyframes machine-radiation-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgb(var(--status-critical-rgb) / 65%), 0 0 0 0 rgb(var(--status-critical-rgb) / 40%);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgb(var(--status-critical-rgb) / 0%), 0 0 0 22px rgb(var(--status-critical-rgb) / 0%);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgb(var(--status-critical-rgb) / 0%), 0 0 0 22px rgb(var(--status-critical-rgb) / 0%);
+  }
+}
+.machine-radiation-glow {
+  border-radius: 9999px;
+  animation: machine-radiation-glow 1.8s ease-out infinite;
+}
+[data-stale="true"] .machine-radiation-glow {
+  animation: none;
+}
+
+/*
+  /3d flow only (see app/3d/layout.tsx, which stamps data-flow="3d" on <html>) —
+  scoped so none of this touches the regular dashboard:
+
+  1. Transparent all the way down. The /3d flow is meant to be embedded as an overlay
+     inside Unreal Engine's web widget with the 3D scene showing through everywhere
+     this site doesn't draw its own UI — the plain opaque `body` background above
+     would otherwise paint over it.
+  2. The always-on glow/pulse animations below assume free GPU compositing for their
+     blurred, continuously-animating box-shadow/opacity. Embedded/off-screen-rendered
+     browser widgets (which is how a page gets shown on a 3D surface in Unreal Engine)
+     commonly render without that, so the same animation that's cheap in a normal
+     browser tab becomes a per-frame repaint cost there — the likely cause of the
+     reported navigation/animation jank. Traded for static equivalents that still
+     communicate "live" / "breached" without the continuous repaint.
+*/
+html[data-flow="3d"],
+html[data-flow="3d"] body {
+  background: transparent !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+  overflow: hidden;
+}
+html[data-flow="3d"] .pulse-dot {
+  animation: none;
+  opacity: 1;
+}
+html[data-flow="3d"] .fault-alert-glow {
+  animation: none;
+  box-shadow: 0 0 0 2px rgb(var(--status-critical-rgb) / 70%);
+}
+html[data-flow="3d"] .machine-radiation-glow {
+  animation: none;
+  box-shadow: 0 0 0 6px rgb(var(--status-critical-rgb) / 55%);
+}
+html[data-flow="3d"] .three-d-legend-item {
+  background-color: rgb(var(--surface-1-rgb) / 85%);
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+}
+/* Shared translucent chrome background for every /3d floating panel/button
+   (HomeLink, ThreeDLogoutButton, ThreeDChatToggle, tab-nav strip, headers below) —
+   one source of truth instead of each component re-declaring the same inline style.
+   Plain rgb()-with-alpha rather than a Tailwind opacity-modifier class (compiles to
+   color-mix()) or backdrop-blur — neither is reliably supported by the embedded
+   browser widget this flow renders inside. */
+html[data-flow="3d"] .three-d-panel {
+  background-color: rgb(var(--surface-1-rgb) / 95%);
+}
+.theme-toggle .moon-icon {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .sun-icon {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .theme-toggle .moon-icon {
+    display: inline;
+  }
+}
+:root[data-theme="dark"] .theme-toggle .sun-icon {
+  display: none;
+}
+:root[data-theme="dark"] .theme-toggle .moon-icon {
+  display: inline;
+}
+
+/* Custom sleek scrollbar for panels and dashboards */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--baseline);
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline) transparent;
+}
