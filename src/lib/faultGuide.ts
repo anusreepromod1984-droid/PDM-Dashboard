@@ -142,6 +142,7 @@ export function namedDefectCode(d: FaultDiagnosis): string {
   if (halted) return "SENSOR";
   const raw = String(d.archetype || defectFromDiagnosis(d).defect_code || "").toUpperCase();
   if (raw === "SENSOR_HALT" || raw === "HARDWARE_CABLE_FAULT" || raw === "SENSOR_CABLE") return "SENSOR";
+  if (["NORMAL", "IDLE", "STANDBY", "STOPPED", "HEALTHY", "NONE"].includes(raw)) return raw;
   if (CATALOG[raw]) return raw;
   const headline = d.headline.toLowerCase();
   if (headline.includes("leak") || headline.includes("pressure leakage")) return "PF001";

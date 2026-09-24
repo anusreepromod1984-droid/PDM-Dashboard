@@ -332,6 +332,13 @@ function isGenericRepair(options?: RepairOption[]): boolean {
 
 function getFallbackRepairOptions(d: FaultDiagnosis): RepairOption[] {
   const code = namedDefectCode(d);
+  if (
+    ["NORMAL", "IDLE", "STANDBY", "STOPPED", "NONE", "HEALTHY"].includes(code) ||
+    ["NORMAL", "IDLE", "STANDBY", "STOPPED"].includes(String(d.archetype || "").toUpperCase()) ||
+    d.severity === "good"
+  ) {
+    return [];
+  }
   const catalog = catalogRepairOptions(code);
   const incoming = d.repairOptions;
   if (incoming && incoming.length > 0 && !isGenericRepair(incoming)) return incoming;
@@ -723,12 +730,21 @@ function Bubble({
   const d = message.diagnosis;
   if (!d) return null;
 
+  const nonFaultArchetypes = new Set(["NORMAL", "IDLE", "STANDBY", "STOPPED"]);
+  const hasHalt = d.summary.includes("HALTED") || d.headline.toLowerCase().includes("halt");
+  const hasIdentifiedFault = d.headline.includes("Identified");
+  const defectCode = String(
+    d.pipelineDetails?.defect_localization?.defect_code ||
+    d.pipelineDetails?.defect_localization?.defectCode ||
+    ""
+  ).toUpperCase();
+  const hasDefect = defectCode !== "" && defectCode !== "NORMAL" && defectCode !== "NONE" && defectCode !== "HEALTHY";
+
   const isFaultOrHalt =
-    d.severity !== "good" ||
-    d.summary.includes("HALTED") ||
-    d.headline.toLowerCase().includes("halt") ||
-    d.headline.includes("Identified") ||
-    (d.archetype !== "NORMAL" && d.archetype !== "IDLE");
+    hasHalt ||
+    hasIdentifiedFault ||
+    hasDefect ||
+    (!nonFaultArchetypes.has(String(d.archetype || "").toUpperCase()) && d.severity !== "good");
 
   const isNominalOrIdle = !isFaultOrHalt;
   const repairOptions = isNominalOrIdle ? [] : getFallbackRepairOptions(d);
@@ -759,7 +775,13 @@ function Bubble({
 
       {isNominalOrIdle ? (
         <div className="mt-4 flex flex-col gap-3">
-          <p className="text-[13px] leading-6 text-secondary">{d.summary}</p>
+          <div className="flex flex-col gap-2 rounded-xl border border-hairline bg-surface-2/40 p-3 text-[13px] leading-relaxed text-secondary">
+            {d.summary.split("\n").map((line, idx) => (
+              <p key={idx} className={line.startsWith("•") ? "font-normal" : "text-muted"}>
+                {line}
+              </p>
+            ))}
+          </div>
           {onRunDiagnosis && (
             <button
               type="button"
@@ -769,6 +791,9 @@ function Bubble({
               Run diagnosis
             </button>
           )}
+          <Fold title="How we diagnosed">
+            <FourAgentBreakdown diagnosis={d} />
+          </Fold>
         </div>
       ) : (
         <div className="mt-5 flex flex-col">
@@ -806,14 +831,17 @@ function Bubble({
       )}
 
       {repairOptions.length === 0 && d.recommendedActions.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-2">
-          {d.recommendedActions.map((action, i) => (
-            <li key={i} className="flex items-start gap-2 text-[13px] leading-6 text-secondary">
-              <span className="mt-0.5 w-4 shrink-0 text-[11px] tabular-nums text-muted">{i + 1}.</span>
-              <span>{action}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-4 flex flex-col gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">Operating Advisory</span>
+          <ul className="flex flex-col gap-1.5">
+            {d.recommendedActions.map((action, i) => (
+              <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-secondary">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                <span>{action}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
