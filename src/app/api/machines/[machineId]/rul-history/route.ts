@@ -12,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ machine
   try {
     const res = await fetch(
       `${FASTAPI_URL}/api/v1/predict/rul_history/${encodeURIComponent(machineId)}`,
-      { cache: "no-store" },
+      { cache: "no-store", signal: AbortSignal.timeout(2000) },
     );
     if (res.ok) {
       data = await res.json();
