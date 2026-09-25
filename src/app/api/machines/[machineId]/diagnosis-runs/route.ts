@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFaultState } from "@/lib/faultStore";
 
-const FASTAPI_URL = process.env.BACKEND_INTERNAL_URL || process.env.BACKEND_FASTAPI_URL || "http://localhost:8004";
+const FASTAPI_URL = process.env.BACKEND_INTERNAL_URL || process.env.BACKEND_FASTAPI_URL || (process.env.NODE_ENV === "production" ? "https://predictivemaintenance-production-e27a.up.railway.app" : "http://localhost:8004");
 
 type HistorianRow = {
   trace_id?: string;

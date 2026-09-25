@@ -8,7 +8,7 @@ import type { NextConfig } from "next";
 // inside the frontend container would otherwise resolve to itself, not the backend
 // container. Deliberately NOT a NEXT_PUBLIC_* var — this is a server-only address the
 // browser never needs to know.
-const BACKEND_INTERNAL_URL = process.env.BACKEND_INTERNAL_URL ?? "http://localhost:8004";
+const BACKEND_INTERNAL_URL = process.env.BACKEND_INTERNAL_URL || (process.env.NODE_ENV === "production" ? "https://predictivemaintenance-production-e27a.up.railway.app" : "http://localhost:8004");
 
 const nextConfig: NextConfig = {
   turbopack: {
