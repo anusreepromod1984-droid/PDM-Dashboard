@@ -298,7 +298,10 @@ export function MachineOverviewView({ machineId }: { machineId: string }) {
                 label: "RUL",
                 color: palette.series[2] ?? palette.series[0],
                 suffix: "d",
-                points: program.points,
+                points:
+                  program.points.length === 1
+                    ? [{ x: program.points[0].x - 60000, y: program.points[0].y }, program.points[0]]
+                    : program.points,
               },
             ]}
             yTitle="Days"

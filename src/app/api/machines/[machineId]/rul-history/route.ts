@@ -51,13 +51,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ machine
   }
 
   // If backend provided non-empty points, return directly
-  if (data && Array.isArray(data.points) && data.points.length > 0) {
+  if (data && Array.isArray(data.points) && data.points.length >= 2) {
     return NextResponse.json(data);
   }
 
   // Fallback: If backend returned empty points (e.g. cold start or fresh cloud DB), ensure valid points
   const now = Date.now();
-  const baselineDays = data?.latest_rul_days ?? 197.7;
+  const baselineDays = data?.latest_rul_days ?? (data?.points?.[0]?.y ?? 197.7);
   const points = [];
   for (let i = 25; i >= 0; i--) {
     points.push({
