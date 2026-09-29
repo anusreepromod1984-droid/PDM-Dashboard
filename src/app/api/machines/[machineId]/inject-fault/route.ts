@@ -83,7 +83,7 @@ export async function POST(
             severity: faultMeta.severity,
             defect_code: faultMeta.defect_code,
             defect_name: faultMeta.defect_name,
-            custom_note: `Triggered via Live Test Scenario: ${scenario.toUpperCase().replace("_", " ")}`,
+            custom_note: null,
           }),
         });
         if (alertRes.ok) {
