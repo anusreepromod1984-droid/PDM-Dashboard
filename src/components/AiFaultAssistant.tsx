@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useRealtime } from "@/context/RealtimeProvider";
+import { useLanguage } from "@/context/LanguageProvider";
+import { getAssistantLabels, getNormalDiagnosis, getIdleDiagnosis, translateDiagnosis } from "@/lib/aiAssistantI18n";
 import { useCompany } from "@/context/CompanyProvider";
 import { useNow } from "@/hooks/useNow";
 import { buildBreachSignature } from "@/lib/faultSignature";
@@ -554,6 +556,8 @@ function RepairOptionsSection({
   options: RepairOption[];
   sparePart?: string | null;
 }) {
+  const { lang } = useLanguage();
+  const labels = getAssistantLabels(lang);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const tabs = toRepairTabs(options, sparePart);
 
@@ -561,7 +565,7 @@ function RepairOptionsSection({
 
   const active = tabs[Math.min(selectedIdx, tabs.length - 1)];
   const tabLabel = (category: RepairOption["category"]) =>
-    repairTabKind(category) === "permanent" ? "Permanent" : "Intermediate";
+    repairTabKind(category) === "permanent" ? labels.permanent : labels.intermediate;
 
   return (
     <div className="flex flex-col gap-3">
@@ -592,7 +596,7 @@ function RepairOptionsSection({
           </div>
           {repairTabKind(active.category) === "intermediate" && active.part && (
             <p className="text-[13px] text-sky-100/90">
-              Part · <span className="font-bold text-sky-50">{active.part}</span>
+              {labels.part} · <span className="font-bold text-sky-50">{active.part}</span>
             </p>
           )}
           <ol className="flex flex-col gap-2">
@@ -610,7 +614,7 @@ function RepairOptionsSection({
           </ol>
           {active.partsOrTools && (
             <p className="text-[12px] text-sky-200/80">
-              Tools · <span className="font-bold text-sky-50">{active.partsOrTools}</span>
+              {labels.tools} · <span className="font-bold text-sky-50">{active.partsOrTools}</span>
             </p>
           )}
         </div>
@@ -669,34 +673,37 @@ function Bubble({
   onRetry?: () => void;
   onRunDiagnosis?: () => void;
 }) {
+  const { lang } = useLanguage();
+  const labels = getAssistantLabels(lang);
+
   if (message.loading) {
     return (
       <div className="flex flex-col gap-2.5 rounded-xl border border-hairline bg-surface-2 p-3.5 shadow-sm">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-xs font-semibold text-primary">
             <IconSparkle className="h-3.5 w-3.5 text-accent animate-spin" />
-            AI Assistant
+            {labels.title || "AI Assistant"}
           </span>
-          <span className="text-[10px] font-medium text-accent animate-pulse">Running LangGraph</span>
+          <span className="text-[10px] font-medium text-accent animate-pulse">{labels.runningLangGraph}</span>
         </div>
-        <p className="text-xs text-muted">Running 4-agent supervisory diagnosis on real-time telemetry…</p>
+        <p className="text-xs text-muted">{labels.runningDiagnosisText}</p>
         <DiagnosingGraph />
         <div className="flex flex-col gap-1 pt-1 text-[11px] text-muted">
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping" />
-            <span>Agent Alpha: Sensor cable & NAMUR loop verification</span>
+            <span>{labels.agentAlpha}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
-            <span>Agent Beta: Power quality & thermal de-weathering</span>
+            <span>{labels.agentBeta}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-            <span>Agent Gamma: ISO-13379 Prognostics & RUL</span>
+            <span>{labels.agentGamma}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            <span>Agent Delta: Prescriptive CMMS dispatch</span>
+            <span>{labels.agentDelta}</span>
           </div>
         </div>
       </div>
@@ -709,7 +716,7 @@ function Bubble({
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-xs font-semibold text-red-400">
             <IconAlertTriangle className="h-3.5 w-3.5 text-red-400" />
-            Diagnosis Service Alert
+            {labels.serviceAlert}
           </span>
         </div>
         <p className="text-xs leading-relaxed text-secondary">{message.error}</p>
@@ -720,15 +727,16 @@ function Bubble({
             className="flex items-center justify-center gap-1.5 rounded-lg border border-red-800/60 bg-red-900/40 px-3 py-1.5 text-xs font-medium text-red-200 transition-colors hover:bg-red-800/60"
           >
             <IconRefresh className="h-3.5 w-3.5" />
-            Retry Diagnosis
+            {labels.retryDiagnosis}
           </button>
         )}
       </div>
     );
   }
 
-  const d = message.diagnosis;
-  if (!d) return null;
+  const rawD = message.diagnosis;
+  if (!rawD) return null;
+  const d = translateDiagnosis(rawD, lang);
 
   const nonFaultArchetypes = new Set(["NORMAL", "IDLE", "STANDBY", "STOPPED"]);
   const hasHalt = d.summary.includes("HALTED") || d.headline.toLowerCase().includes("halt");
@@ -765,7 +773,7 @@ function Bubble({
     <div className="flex flex-col">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex flex-col gap-1.5">
-          <StatusBadge severity={d.severity} />
+          <StatusBadge severity={d.severity} localized={true} />
           <h2 className="text-[15px] font-semibold leading-snug text-primary">
             {d.headline.replace(/\s+Identified$/i, "")}
           </h2>
@@ -788,10 +796,10 @@ function Bubble({
               onClick={onRunDiagnosis}
               className="self-start text-[13px] font-medium text-accent hover:underline"
             >
-              Run diagnosis
+              {labels.runDiagnosisBtn || "Run diagnosis"}
             </button>
           )}
-          <Fold title="How we diagnosed">
+          <Fold title={labels.howWeDiagnosed || "How we diagnosed"}>
             <FourAgentBreakdown diagnosis={d} />
           </Fold>
         </div>
@@ -812,7 +820,7 @@ function Bubble({
             }}
           />
           {repairOptions.length > 0 && (
-            <BriefingSection title="Repair procedure" tone="repair">
+            <BriefingSection title={labels.repairProcedure} tone="repair">
               <RepairOptionsSection
                 options={repairOptions}
                 sparePart={
@@ -824,7 +832,7 @@ function Bubble({
             </BriefingSection>
           )}
           <InventoryCheckSection diagnosis={d} />
-          <Fold title="How we diagnosed">
+          <Fold title={labels.howWeDiagnosed || "How we diagnosed"}>
             <FourAgentBreakdown diagnosis={d} />
           </Fold>
         </div>
@@ -832,7 +840,7 @@ function Bubble({
 
       {repairOptions.length === 0 && d.recommendedActions.length > 0 && (
         <div className="mt-4 flex flex-col gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">Operating Advisory</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">{labels.operatingAdvisory}</span>
           <ul className="flex flex-col gap-1.5">
             {d.recommendedActions.map((action, i) => (
               <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-secondary">
@@ -907,6 +915,8 @@ export function AiFaultAssistant({
   variant?: "docked" | "floating";
 }) {
   const { records, activeAlerts, activeActivity, latestDiagnosis } = useRealtime();
+  const { lang } = useLanguage();
+  const labels = getAssistantLabels(lang);
   const focusedMachineId = useFocusedMachineId();
   const injectScenario = useFaultScenario(focusedMachineId ?? undefined);
   const now = useNow(30_000);
@@ -963,7 +973,7 @@ export function AiFaultAssistant({
   const hasFocusedTelemetry = focusedMachineId ? records[focusedMachineId]?.latest != null : false;
   const focusedSignature =
     focusedMachineId && hasFocusedTelemetry
-      ? buildBreachSignature(focusedBreaches, focusedFaults, focusedActivity?.idle ?? false)
+      ? `${buildBreachSignature(focusedBreaches, focusedFaults, focusedActivity?.idle ?? false)}:scenario=${injectScenario}`
       : null;
   const liveDiagnosis = focusedMachineId ? latestDiagnosis[focusedMachineId] : undefined;
   const liveDiagnosisForView = injectScenario === "nominal" ? liveDiagnosis : undefined;
@@ -983,7 +993,7 @@ export function AiFaultAssistant({
         [machineId]: [{ key: loadingKey, loading: true }],
       }));
 
-      apiFetch<FaultDiagnosis>(`/api/machines/${machineId}/fault-assistant`, { method: "POST" })
+      apiFetch<FaultDiagnosis>(`/api/machines/${machineId}/fault-assistant?lang=${lang}`, { method: "POST" })
         .then((diagnosis) => {
           setMessagesByMachine((prev) => ({
             ...prev,
@@ -1005,7 +1015,7 @@ export function AiFaultAssistant({
           inFlightRef.current.delete(machineId);
         });
     },
-    [focusedSignature, onRequestOpen, variant]
+    [lang, focusedSignature, onRequestOpen, variant]
   );
 
   // A scenario can change while the breach signature remains identical (for example,
@@ -1013,12 +1023,24 @@ export function AiFaultAssistant({
   // acceleration). Re-run instead of leaving the previous scenario's diagnosis shown.
   useEffect(() => {
     const handleScenarioChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ machineId?: string }>).detail;
-      if (detail?.machineId) runDiagnosis(detail.machineId);
+      const detail = (event as CustomEvent<{ machineId?: string; scenario?: string }>).detail;
+      if (detail?.machineId) {
+        if (notifiedRef.current[detail.machineId]) {
+          notifiedRef.current[detail.machineId].clear();
+        }
+        inFlightRef.current.delete(detail.machineId);
+        runDiagnosis(detail.machineId);
+      }
     };
     window.addEventListener("apms:fault-scenario-changed", handleScenarioChange);
     return () => window.removeEventListener("apms:fault-scenario-changed", handleScenarioChange);
   }, [runDiagnosis]);
+
+  // Re-run diagnosis when language changes so that user gets localized response immediately
+  useEffect(() => {
+    if (!focusedMachineId) return;
+    runDiagnosis(focusedMachineId);
+  }, [lang, focusedMachineId, runDiagnosis]);
 
   // Live MQTT diagnosis (same tick as gauges). An inject button is an explicit test —
   // do not let the live PF001 stream overwrite the scenario the operator just selected.
@@ -1050,14 +1072,19 @@ export function AiFaultAssistant({
     if (!focusedMachineId || focusedSignature === null) return;
     if (liveDiagnosisForView) return;
 
-    // Normal / no-breach case: reset to nominal base
-    if (!focusedActivity?.idle && focusedBreaches.length === 0 && focusedFaults.length === 0) {
+    // Normal / no-breach case: ONLY reset to nominal base when injectScenario is "nominal"
+    if (
+      injectScenario === "nominal" &&
+      !focusedActivity?.idle &&
+      focusedBreaches.length === 0 &&
+      focusedFaults.length === 0
+    ) {
       setMessagesByMachine((prev) => ({
         ...prev,
         [focusedMachineId]: [
           {
             key: `${focusedSignature}:normal`,
-            diagnosis: { ...NORMAL_DIAGNOSIS_BASE, machineId: focusedMachineId, generatedAt: Date.now() },
+            diagnosis: getNormalDiagnosis(lang, focusedMachineId),
           },
         ],
       }));
@@ -1070,21 +1097,33 @@ export function AiFaultAssistant({
     if (inFlightRef.current.has(focusedMachineId)) return;
     notified.add(focusedSignature);
 
-    if (focusedActivity?.idle) {
+    if (focusedActivity?.idle && injectScenario === "nominal") {
       if (variant !== "floating") onRequestOpen();
       setMessagesByMachine((prev) => ({
         ...prev,
         [focusedMachineId]: [
           ...(prev[focusedMachineId] ?? []),
-          { key: `${focusedSignature}:idle`, diagnosis: idleDiagnosis(focusedMachineId, focusedActivity.zeroFields) },
+          { key: `${focusedSignature}:idle`, diagnosis: getIdleDiagnosis(lang, focusedMachineId, focusedActivity.zeroFields) },
         ],
       }));
       return;
     }
 
-    // Fault detected: run diagnosis
+    // Fault detected (either from real stream or injected test scenario): run diagnosis
     runDiagnosis(focusedMachineId);
-  }, [focusedMachineId, focusedSignature, focusedActivity?.idle, focusedBreaches.length, focusedFaults.length, liveDiagnosisForView, onRequestOpen, runDiagnosis, variant]);
+  }, [
+    focusedMachineId,
+    focusedSignature,
+    injectScenario,
+    focusedActivity?.idle,
+    focusedBreaches.length,
+    focusedFaults.length,
+    liveDiagnosisForView,
+    onRequestOpen,
+    runDiagnosis,
+    variant,
+    lang,
+  ]);
 
   const messages = focusedMachineId ? (messagesByMachine[focusedMachineId] ?? []) : [];
   const selectedRun = selectedRunId ? (historyRuns?.find((r) => r.id === selectedRunId) ?? null) : null;
@@ -1104,12 +1143,12 @@ export function AiFaultAssistant({
               <IconChevronLeft className="h-4 w-4" />
             </button>
             <IconHistory className="h-4 w-4 text-accent" />
-            <span className="text-sm font-semibold text-primary">Diagnosis History</span>
+            <span className="text-sm font-semibold text-primary">{labels.history}</span>
           </div>
         ) : (
           <div className="flex items-center gap-2">
             <IconSparkle className="h-4 w-4 text-accent" />
-            <span className="text-sm font-semibold text-primary">AI Assistant</span>
+            <span className="text-sm font-semibold text-primary">{labels.title}</span>
           </div>
         )}
 
@@ -1118,12 +1157,12 @@ export function AiFaultAssistant({
             <button
               type="button"
               onClick={() => runDiagnosis(focusedMachineId)}
-              title="Re-run 4-Agent LangGraph Diagnosis"
+              title={labels.rerunDiagnosis}
               aria-label="Run Diagnosis"
               className="flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-primary"
             >
               <IconRefresh className="h-3.5 w-3.5 text-accent" />
-              <span>Diagnose</span>
+              <span>{labels.diagnose}</span>
             </button>
           )}
           {focusedMachineId && (

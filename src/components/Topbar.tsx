@@ -10,6 +10,7 @@ import { ProfileButton } from "@/components/ProfileButton";
 import { TourRestartButton } from "@/components/tour/TourLauncher";
 import { IconDotsGrid, IconEdit, IconSparkle } from "@/components/icons";
 import { machineViewLabel } from "@/lib/machineViews";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 /** Breadcrumb treats segment 0 as the company slug (validated by CompanyGate) and everything after it as what the old flat routes used to call segment 0. */
 function useBreadcrumb() {
@@ -147,6 +148,7 @@ export function Topbar({
             />
           )}
         </button>
+        <LanguageSwitcher />
         <ProfileButton />
       </div>
     </header>

@@ -11,6 +11,7 @@ export function FaultInjectorBar({ machineId }: FaultInjectorBarProps) {
   const [activeScenario, setActiveScenario] = useState<FaultScenario>("nominal");
   const [vibThreshold, setVibThreshold] = useState<number>(4.5);
   const [loading, setLoading] = useState<boolean>(false);
+  const [clearingCooldown, setClearingCooldown] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<string>("");
 
   useEffect(() => {
@@ -22,6 +23,25 @@ export function FaultInjectorBar({ machineId }: FaultInjectorBarProps) {
       })
       .catch(() => {});
   }, [machineId]);
+
+  const handleClearCooldown = async () => {
+    setClearingCooldown(true);
+    try {
+      const res = await fetch(`/api/machines/${encodeURIComponent(machineId)}/clear-cooldown`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        setFeedback("Alert cooldown cleared! Next fault will notify immediately.");
+        setTimeout(() => setFeedback(""), 4000);
+      } else {
+        setFeedback("Failed to clear cooldown");
+      }
+    } catch {
+      setFeedback("Failed to clear cooldown");
+    } finally {
+      setClearingCooldown(false);
+    }
+  };
 
   const handleInject = async (scenario: FaultScenario) => {
     setLoading(true);
@@ -36,8 +56,15 @@ export function FaultInjectorBar({ machineId }: FaultInjectorBarProps) {
       window.dispatchEvent(new CustomEvent("apms:fault-scenario-changed", {
         detail: { machineId, scenario: data.scenario },
       }));
-      setFeedback(`Applied: ${scenario.toUpperCase().replace("_", " ")}`);
-      setTimeout(() => setFeedback(""), 3000);
+
+      // If returning to nominal, also automatically clear the alert cooldown
+      if (scenario === "nominal") {
+        fetch(`/api/machines/${encodeURIComponent(machineId)}/clear-cooldown`, { method: "POST" }).catch(() => {});
+        setFeedback("Nominal Stream restored & Cooldown reset");
+      } else {
+        setFeedback(`Applied: ${scenario.toUpperCase().replace("_", " ")}`);
+      }
+      setTimeout(() => setFeedback(""), 3500);
     } catch {
       setFeedback("Failed to inject scenario");
     } finally {
@@ -107,18 +134,31 @@ export function FaultInjectorBar({ machineId }: FaultInjectorBarProps) {
           {feedback && <span className="text-xs text-emerald-400 font-medium animate-pulse">{feedback}</span>}
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-muted">
-          <span>ISO Vib Alert Limit:</span>
-          <input
-            type="range"
-            min="2.0"
-            max="10.0"
-            step="0.5"
-            value={vibThreshold}
-            onChange={(e) => handleThresholdChange(parseFloat(e.target.value))}
-            className="w-20 cursor-pointer accent-accent"
-          />
-          <span className="font-mono text-primary font-bold">{vibThreshold.toFixed(1)} mm/s</span>
+        <div className="flex items-center gap-3 text-xs text-muted">
+          <div className="flex items-center gap-2">
+            <span>ISO Vib Alert Limit:</span>
+            <input
+              type="range"
+              min="2.0"
+              max="10.0"
+              step="0.5"
+              value={vibThreshold}
+              onChange={(e) => handleThresholdChange(parseFloat(e.target.value))}
+              className="w-20 cursor-pointer accent-accent"
+            />
+            <span className="font-mono text-primary font-bold">{vibThreshold.toFixed(1)} mm/s</span>
+          </div>
+
+          <button
+            type="button"
+            disabled={clearingCooldown}
+            onClick={handleClearCooldown}
+            title="Reset the alert cooldown timer so the next fault triggers WhatsApp & Email immediately"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border border-hairline/80 bg-surface-2 hover:bg-surface-3 text-secondary hover:text-primary transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            <span className="text-amber-400">⚡</span>
+            <span>{clearingCooldown ? "Resetting..." : "Clear Alert Cooldown"}</span>
+          </button>
         </div>
       </div>
 

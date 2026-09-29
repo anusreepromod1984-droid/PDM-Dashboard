@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFaultState } from "@/lib/faultStore";
+import { translateDiagnosis } from "@/lib/aiAssistantI18n";
+import type { LangCode } from "@/lib/i18n";
 
 const FASTAPI_URL = process.env.BACKEND_FASTAPI_URL || (process.env.NODE_ENV === "production" ? "https://predictivemaintenance-production-e27a.up.railway.app" : "http://localhost:8004");
 
@@ -570,7 +572,8 @@ async function handleAssistantRequest(
       ];
     }
 
-    return NextResponse.json({
+    const lang = (req.nextUrl.searchParams.get("lang") || "en") as LangCode;
+    const diagnosisResult = {
       machineId,
       archetype,
       generatedAt: Date.now(),
@@ -581,7 +584,8 @@ async function handleAssistantRequest(
       faultExplanation,
       repairOptions,
       pipelineDetails: apms,
-    });
+    };
+    return NextResponse.json(translateDiagnosis(diagnosisResult, lang));
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Failed to execute diagnosis" },

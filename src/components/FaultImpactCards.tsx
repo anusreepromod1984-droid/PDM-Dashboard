@@ -28,6 +28,8 @@ import {
 import { enrichExplanation } from "@/lib/faultGuide";
 import { faultImpact, type ImpactIcon, type ImpactLevel, type ImpactStep } from "@/lib/faultImpact";
 import type { FaultDiagnosis, FaultEvidence, PurchaseOption, SourcingIntelligence, Telemetry } from "@/lib/types";
+import { useLanguage } from "@/context/LanguageProvider";
+import { getAssistantLabels } from "@/lib/aiAssistantI18n";
 
 const LEVEL_COLOR: Record<ImpactLevel, string> = {
   none: "var(--status-good)",
@@ -287,29 +289,33 @@ function WarehouseStatus({
   qty: number;
   bin?: string | null;
 }) {
+  const { lang } = useLanguage();
+  const labels = getAssistantLabels(lang);
   const inWarehouse = qty > 0;
   if (inWarehouse) {
     return (
       <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/40 px-3 py-2.5">
-        <div className="text-[13px] font-semibold text-emerald-300">In warehouse</div>
+        <div className="text-[13px] font-semibold text-emerald-300">{labels.inWarehouse}</div>
         <div className="mt-0.5 text-[13px] text-emerald-100/90">
-          {qty} piece{qty === 1 ? "" : "s"}
-          {bin ? ` in ${bin}` : ""} — pick from stores.
+          {qty} {qty === 1 ? labels.piece : labels.pieces}
+          {bin ? ` ${labels.inBin} ${bin}` : ""} — {labels.pickFromStores}
         </div>
       </div>
     );
   }
   return (
     <div className="rounded-lg border border-red-800/50 bg-red-950/35 px-3 py-2.5">
-      <div className="text-[13px] font-semibold text-red-300">Not in warehouse</div>
+      <div className="text-[13px] font-semibold text-red-300">{labels.notInWarehouse}</div>
       <div className="mt-0.5 text-[13px] text-red-100/80">
-        {bin ? `${bin} is empty.` : "No stock on the shelf."} Order from the listings below.
+        {bin ? `${bin} ${labels.noStock}` : labels.noStock} {labels.orderFromListings}
       </div>
     </div>
   );
 }
 
 function EmailOemBlock({ diagnosis }: { diagnosis: FaultDiagnosis }) {
+  const { lang } = useLanguage();
+  const labels = getAssistantLabels(lang);
   const mail = diagnosis.pipelineDetails?.cmms_work_order?.oem_mail;
   if (!mail?.sent) return null;
   const when = mail.sent_at ? ` at ${new Date(mail.sent_at).toLocaleString()}` : "";
@@ -318,9 +324,9 @@ function EmailOemBlock({ diagnosis }: { diagnosis: FaultDiagnosis }) {
       <div className="flex items-start gap-2">
         <IconMail className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
         <div className="min-w-0">
-          <div className="text-[13px] font-semibold text-emerald-300">An email has been sent</div>
+          <div className="text-[13px] font-semibold text-emerald-300">{labels.emailSent}</div>
           <p className="mt-0.5 text-[12px] leading-5 text-emerald-100/90">
-            The OEM inventory check went out{when}.
+            {labels.emailSentDesc}{when}
           </p>
         </div>
       </div>
@@ -329,6 +335,8 @@ function EmailOemBlock({ diagnosis }: { diagnosis: FaultDiagnosis }) {
 }
 
 export function InventoryCheckSection({ diagnosis }: { diagnosis: FaultDiagnosis }) {
+  const { lang } = useLanguage();
+  const labels = getAssistantLabels(lang);
   const impact = faultImpact(diagnosis);
   const intel = diagnosis.pipelineDetails?.cmms_work_order?.sourcing_intelligence;
   const storesQty = intel?.stores_qty ?? 0;
@@ -338,7 +346,7 @@ export function InventoryCheckSection({ diagnosis }: { diagnosis: FaultDiagnosis
   const ticketType = wo?.ticket_type ? String(wo.ticket_type) : null;
 
   return (
-    <BriefingSection title="Inventory check" tone="inventory">
+    <BriefingSection title={labels.inventoryCheck} tone="inventory">
       {impact.spareShort ? (
         <PartCard partNumber={intel?.oem_part_number || null} spareName={impact.spareShort} />
       ) : (
@@ -374,6 +382,8 @@ export function FaultImpactCards({
   recommendation?: { title: string; window?: string | null };
   repairTimes?: { intermediate?: string; permanent?: string };
 }) {
+  const { lang } = useLanguage();
+  const labels = getAssistantLabels(lang);
   const impact = faultImpact(diagnosis);
   const explanation = enrichExplanation(diagnosis, telemetry);
   const color = LEVEL_COLOR[impact.level];
@@ -397,15 +407,15 @@ export function FaultImpactCards({
     ...impact.doThis.map((step) => step.label),
   ].filter((line): line is string => Boolean(line && line.trim()));
   const downtimeRows = [
-    repairTimes?.intermediate ? { label: "Intermediate", value: repairTimes.intermediate } : null,
-    repairTimes?.permanent ? { label: "Permanent", value: repairTimes.permanent } : null,
+    repairTimes?.intermediate ? { label: labels.intermediate, value: repairTimes.intermediate } : null,
+    repairTimes?.permanent ? { label: labels.permanent, value: repairTimes.permanent } : null,
     recommendation?.window ? { label: "Crew window", value: recommendation.window } : null,
     lifeLabel ? { label: "Act within", value: lifeLabel } : null,
   ].filter((row): row is { label: string; value: string } => Boolean(row));
 
   return (
     <div className="flex flex-col">
-      <BriefingSection title="Criticality" tone="criticality">
+      <BriefingSection title={labels.criticality} tone="criticality">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1" aria-label={`Criticality ${impact.score} of 5`}>
             {Array.from({ length: 5 }, (_, i) => (
@@ -417,8 +427,8 @@ export function FaultImpactCards({
             ))}
           </div>
           <div className="flex justify-between text-[10px] text-red-200/70">
-            <span>Low</span>
-            <span>Severe</span>
+            <span>{labels.low}</span>
+            <span>{labels.severe}</span>
           </div>
           {showLife && (
             <>
@@ -426,11 +436,11 @@ export function FaultImpactCards({
                 <div className="h-full rounded-sm" style={{ width: `${elapsedPct}%`, backgroundColor: color }} />
               </div>
               <div className="flex justify-between text-[10px] text-red-200/70">
-                <span>Act now</span>
+                <span>{labels.actNow}</span>
                 <span className="font-bold tabular-nums" style={{ color }}>
-                  {lifeLabel} left
+                  {lifeLabel} {labels.left}
                 </span>
-                <span>14 d horizon</span>
+                <span>{labels.horizon14d}</span>
               </div>
             </>
           )}
@@ -445,7 +455,7 @@ export function FaultImpactCards({
         </p>
       </BriefingSection>
 
-      <BriefingSection title="Artifacts" tone="artifacts">
+      <BriefingSection title={labels.artifacts} tone="artifacts">
         <PictureRow steps={[impact.what, impact.where, impact.notThis]} />
         {evidence.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5">
@@ -471,7 +481,7 @@ export function FaultImpactCards({
       </BriefingSection>
 
       {actionBullets.length > 0 && (
-        <BriefingSection title="Action Required" tone="action">
+        <BriefingSection title={labels.action} tone="action">
           <PictureRow steps={impact.doThis.slice(0, 3)} />
           <ul className="flex flex-col gap-1.5">
             {actionBullets.map((line) => (
@@ -487,7 +497,7 @@ export function FaultImpactCards({
       )}
 
       {downtimeRows.length > 0 && (
-        <BriefingSection title="Downtime / Repair time" tone="downtime">
+        <BriefingSection title={labels.downtime} tone="downtime">
           <ul className="flex flex-col gap-1.5">
             {downtimeRows.map((row) => (
               <li key={row.label} className="flex items-start justify-between gap-3">
