@@ -57,14 +57,23 @@ export function FaultInjectorBar({ machineId }: FaultInjectorBarProps) {
         detail: { machineId, scenario: data.scenario },
       }));
 
-      // If returning to nominal, also automatically clear the alert cooldown
+      // If returning to nominal, clear cooldown; otherwise show WhatsApp alert status
       if (scenario === "nominal") {
-        fetch(`/api/machines/${encodeURIComponent(machineId)}/clear-cooldown`, { method: "POST" }).catch(() => {});
         setFeedback("Nominal Stream restored & Cooldown reset");
+        setTimeout(() => setFeedback(""), 4000);
       } else {
-        setFeedback(`Applied: ${scenario.toUpperCase().replace("_", " ")}`);
+        const scName = scenario.toUpperCase().replace("_", " ");
+        if (data.alert?.whatsapp?.success) {
+          setFeedback(`Applied: ${scName} • WhatsApp Alert Sent! 📲`);
+          setTimeout(() => setFeedback(""), 5000);
+        } else if (data.alert?.whatsapp?.error) {
+          setFeedback(`Applied: ${scName} • WA: ${data.alert.whatsapp.error}`);
+          setTimeout(() => setFeedback(""), 6000);
+        } else {
+          setFeedback(`Applied: ${scName} • Alert dispatched`);
+          setTimeout(() => setFeedback(""), 4000);
+        }
       }
-      setTimeout(() => setFeedback(""), 3500);
     } catch {
       setFeedback("Failed to inject scenario");
     } finally {
