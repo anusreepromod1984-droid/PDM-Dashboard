@@ -180,7 +180,7 @@ export function MachineOverviewView({ machineId }: { machineId: string }) {
         </GaugeStatCard>
         <GaugeStatCard icon={IconActivity} title="Vibration" severity={hasVibration ? vibSev : undefined}>
           <MiniArcGauge
-            key={`vib-${scenario}-${hasVibration ? latest.imuAcceleration : 0}`}
+            key={`vib-${scenario}`}
             value={hasVibration ? latest.imuAcceleration : 0}
             min={0}
             max={12}

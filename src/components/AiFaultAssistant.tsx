@@ -69,6 +69,34 @@ function idleDiagnosis(machineId: string, zeroFields: string[]): FaultDiagnosis 
   };
 }
 
+function isDiagnosisEqual(a?: FaultDiagnosis | null, b?: FaultDiagnosis | null): boolean {
+  if (!a || !b) return a === b;
+  if (a.machineId !== b.machineId) return false;
+  if (a.severity !== b.severity) return false;
+  if (a.archetype !== b.archetype) return false;
+  if (a.headline !== b.headline) return false;
+  if (a.summary !== b.summary) return false;
+
+  const defectA =
+    a.pipelineDetails?.defect_localization?.defect_code ??
+    a.pipelineDetails?.defect_localization?.defectCode;
+  const defectB =
+    b.pipelineDetails?.defect_localization?.defect_code ??
+    b.pipelineDetails?.defect_localization?.defectCode;
+  if (defectA !== defectB) return false;
+
+  const cableA = a.pipelineDetails?.cable_check?.status;
+  const cableB = b.pipelineDetails?.cable_check?.status;
+  if (cableA !== cableB) return false;
+
+  const failureA = a.pipelineDetails?.electrical_health?.isolated_failure_domain;
+  const failureB = b.pipelineDetails?.electrical_health?.isolated_failure_domain;
+  if (failureA !== failureB) return false;
+
+  return true;
+}
+
+
 function useFocusedMachineId(): string | null {
   const pathname = usePathname();
   const { slug } = useCompany();
@@ -1006,10 +1034,7 @@ export function AiFaultAssistant({
             ...prev,
             [machineId]: [{ key: `error_${Date.now()}:error`, error: message }],
           }));
-          // Remove from notified so retry is allowed
-          if (notifiedRef.current[machineId] && focusedSignature) {
-            notifiedRef.current[machineId].delete(focusedSignature);
-          }
+          // Keep in notified to prevent immediate retry loop on error; operator can retry manually
         })
         .finally(() => {
           inFlightRef.current.delete(machineId);
@@ -1036,21 +1061,31 @@ export function AiFaultAssistant({
     return () => window.removeEventListener("apms:fault-scenario-changed", handleScenarioChange);
   }, [runDiagnosis]);
 
-  // Re-run diagnosis when language changes so that user gets localized response immediately
+  // Re-run diagnosis only when language actually changes
+  const prevLangRef = useRef(lang);
   useEffect(() => {
-    if (!focusedMachineId) return;
-    runDiagnosis(focusedMachineId);
+    if (prevLangRef.current !== lang) {
+      prevLangRef.current = lang;
+      if (focusedMachineId) {
+        runDiagnosis(focusedMachineId);
+      }
+    }
   }, [lang, focusedMachineId, runDiagnosis]);
 
-  // Live MQTT diagnosis (same tick as gauges). An inject button is an explicit test —
-  // do not let the live PF001 stream overwrite the scenario the operator just selected.
+  // Live MQTT diagnosis (same tick as gauges). Only refresh if the diagnosis has genuinely changed.
   useEffect(() => {
     if (!focusedMachineId || !liveDiagnosisForView) return;
     if (inFlightRef.current.has(focusedMachineId)) return;
-    setMessagesByMachine((prev) => ({
-      ...prev,
-      [focusedMachineId]: [{ key: `live_${focusedMachineId}`, diagnosis: liveDiagnosisForView }],
-    }));
+    setMessagesByMachine((prev) => {
+      const existing = prev[focusedMachineId]?.[0]?.diagnosis;
+      if (existing && isDiagnosisEqual(existing, liveDiagnosisForView)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [focusedMachineId]: [{ key: `live_${focusedMachineId}`, diagnosis: liveDiagnosisForView }],
+      };
+    });
   }, [focusedMachineId, liveDiagnosisForView]);
 
   // Keep history list in step with new agent_snapshot rows.
@@ -1079,15 +1114,21 @@ export function AiFaultAssistant({
       focusedBreaches.length === 0 &&
       focusedFaults.length === 0
     ) {
-      setMessagesByMachine((prev) => ({
-        ...prev,
-        [focusedMachineId]: [
-          {
-            key: `${focusedSignature}:normal`,
-            diagnosis: getNormalDiagnosis(lang, focusedMachineId),
-          },
-        ],
-      }));
+      setMessagesByMachine((prev) => {
+        const existingKey = prev[focusedMachineId]?.[0]?.key;
+        if (existingKey === `${focusedSignature}:normal`) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [focusedMachineId]: [
+            {
+              key: `${focusedSignature}:normal`,
+              diagnosis: getNormalDiagnosis(lang, focusedMachineId),
+            },
+          ],
+        };
+      });
       return;
     }
 
